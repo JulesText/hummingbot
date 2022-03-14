@@ -15,7 +15,7 @@ NaN = float("nan")
 class PerpetualMarketGridOrderTracker(OrderTracker):
     # ETH confirmation requirement of Binance has shortened to 12 blocks as of 7/15/2019.
     # 12 * 15 / 60 = 3 minutes
-    SHADOW_MAKER_ORDER_KEEP_ALIVE_DURATION = 60.0 * 3
+    SHADOW_GRID_ORDER_KEEP_ALIVE_DURATION = 60.0 * 3
 
     def __init__(self):
         super().__init__()

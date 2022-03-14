@@ -16,7 +16,7 @@ from hummingbot.client.settings import (
 )
 
 
-def maker_trading_pair_prompt():
+def grid_trading_pair_prompt():
     derivative = perpetual_market_grid_config_map.get("derivative").value
     example = AllConnectorSettings.get_example_pairs().get(derivative)
     return "Enter the token trading pair you would like to trade on %s%s >>> " \
@@ -78,7 +78,7 @@ def price_source_market_prompt() -> str:
 
 def validate_price_source_derivative(value: str) -> Optional[str]:
     if value == perpetual_market_grid_config_map.get("derivative").value:
-        return "Price source derivative cannot be the same as maker derivative."
+        return "Price source derivative cannot be the same as grid derivative."
     if validate_derivative(value) is not None and validate_exchange(value) is not None:
         return "Price source must must be a valid exchange or derivative connector."
 
@@ -113,13 +113,13 @@ perpetual_market_grid_config_map = {
                   default="perpetual_market_grid"),
     "derivative":
         ConfigVar(key="derivative",
-                  prompt="Enter your maker derivative connector >>> ",
+                  prompt="Enter your grid derivative connector >>> ",
                   validator=validate_derivative,
                   on_validated=derivative_on_validated,
                   prompt_on_new=True),
     "market":
         ConfigVar(key="market",
-                  prompt=maker_trading_pair_prompt,
+                  prompt=grid_trading_pair_prompt,
                   validator=validate_derivative_trading_pair,
                   prompt_on_new=True),
     "leverage":
@@ -208,6 +208,13 @@ perpetual_market_grid_config_map = {
     "stop_loss_slippage_buffer":
         ConfigVar(key="stop_loss_slippage_buffer",
                   prompt="How much buffer should be added in stop loss orders' price to account for slippage? (Enter 1 for 1%)? >>> ",
+                  type_str="decimal",
+                  default=Decimal("0.5"),
+                  validator=lambda v: validate_decimal(v, 0, inclusive=True),
+                  prompt_on_new=True),
+    "grid_interval":
+        ConfigVar(key="grid_interval",
+                  prompt="How large is interval between grids as ratio (Enter 1 for 1%)? >>> ",
                   type_str="decimal",
                   default=Decimal("0.5"),
                   validator=lambda v: validate_decimal(v, 0, inclusive=True),

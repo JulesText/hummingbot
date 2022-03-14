@@ -28,6 +28,7 @@ def start(self):
         stop_loss_spread = c_map.get("stop_loss_spread").value / Decimal('100')
         time_between_stop_loss_orders = c_map.get("time_between_stop_loss_orders").value
         stop_loss_slippage_buffer = c_map.get("stop_loss_slippage_buffer").value / Decimal('100')
+        # grid_interval = c_map.get("grid_interval").value / Decimal('100')
         minimum_spread = c_map.get("minimum_spread").value / Decimal('100')
         price_ceiling = c_map.get("price_ceiling").value
         price_floor = c_map.get("price_floor").value
@@ -50,11 +51,11 @@ def start(self):
         order_override = c_map.get("order_override").value
 
         trading_pair: str = raw_trading_pair
-        maker_assets: Tuple[str, str] = self._initialize_market_assets(exchange, [trading_pair])[0]
+        grid_assets: Tuple[str, str] = self._initialize_market_assets(exchange, [trading_pair])[0]
         market_names: List[Tuple[str, List[str]]] = [(exchange, [trading_pair])]
         self._initialize_markets(market_names)
-        maker_data = [self.markets[exchange], trading_pair] + list(maker_assets)
-        self.market_trading_pair_tuples = [MarketTradingPairTuple(*maker_data)]
+        grid_data = [self.markets[exchange], trading_pair] + list(grid_assets)
+        self.market_trading_pair_tuples = [MarketTradingPairTuple(*grid_data)]
         asset_price_delegate = None
         if price_source == "external_market":
             asset_trading_pair: str = price_source_market
@@ -70,7 +71,7 @@ def start(self):
 
         self.strategy = PerpetualMarketGridStrategy()
         self.strategy.init_params(
-            market_info=MarketTradingPairTuple(*maker_data),
+            market_info=MarketTradingPairTuple(*grid_data),
             leverage=leverage,
             position_mode=position_mode,
             bid_spread=bid_spread,
