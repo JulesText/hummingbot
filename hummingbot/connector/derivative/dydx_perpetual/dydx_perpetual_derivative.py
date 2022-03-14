@@ -349,7 +349,12 @@ class DydxPerpetualDerivative(ExchangeBase, PerpetualTrading):
                 self._leverage[trading_pair],
                 position_action.name,
             )
-            expiration = created_at + 600
+            # expiration = created_at + 600
+            # despite what the dydx api docs say, 'expiration' will be a point in time of x seconds in the future,
+            # not a period in seconds
+            # here we let orders expire after 1000 days, default was 10 minutes
+            # this shouldn't be hardcoded but it is
+            expiration = created_at + 60 * 1440 * 1000
             limit_fee = 0.015
             try:
                 creation_response = await self.place_order(
