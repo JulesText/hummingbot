@@ -1,0 +1,215 @@
+########################################################
+
+# when bot is stopped with 'stop' it will cancel outstanding orders but not close the current position
+# this will be done manually
+
+# when order opens are fully filled, why was exit not placed?
+# A: check/test
+
+# when 3 levels of short are filled, the resulting long to close can be the same price as
+# the first short level
+# A: check/test
+# is this because short_profit_taking_spread will calculate the closing price
+# from the furthermost level, and if not large enough can equal the first level price
+
+# the exchange order expiration time needs to be longer than the bot life
+# otherwise the exchange will cancel orders and the bot won't register them properly
+# and will stop placing orders
+
+# eth might not be the best choice for volatility
+
+# with current settings and $1k investment
+# level 1 profit 0.08% per trade * 1/40 of investment = 0.002% = $0.02
+# level 2 profit 0.18% per trade * 1/40 of investment = 0.004% = $0.04
+# level 3 profit 0.28% per trade * 1/40 of investment = 0.006% = $0.06
+# if we increase the proportion of investment to 10% per trade we get
+# level 1 $0.08
+# level 2 $0.18
+# level 3 $0.28
+# or roughly 0.05% for a full level trade
+# if we make 5 a day that's 0.25%, or 1.75% a week
+# but a market reversal can bomb that out for a 25% stop loss
+# so well selected floors and ceilings are essential
+
+# api seems to limit small orders to 10 per 10 seconds, not seems possible to workaround?
+
+########################################################
+###       Perpetual market making strategy config    ###
+########################################################
+
+template_version: 6
+strategy: perpetual_market_making
+
+# derivative and token parameters.
+derivative: dydx_perpetual
+
+# Token trading pair for the exchange, e.g. BTC-USDT
+market: ETH-USD
+
+# What leverage to use
+leverage: 1
+
+# Position mode to use, hedge mode or one-way position mode.
+position_mode: Hedge
+# this might need tweaking
+
+# How far away from mid price to place the first level bid order.
+# Spread of 1 = 1% away from mid price at that time.
+# Example if mid price is 100 and bid_spread is 1.
+# Your bid is placed at 99.
+# i.e. order at eth price +/- 15 usd (i.e. eth price $3k * 0.005 - 15)
+# bid_spread: 0.5
+# expect this kind of change once an hour typically
+# this might need tweaking
+bid_spread: 0.2
+
+# How far away from mid price to place the first level ask order.
+# this is short version of above bid_spread
+# Spread of 1 = 1% away from mid price at that time.
+# Example if mid price is 100 and ask_spread is 1.
+# Your bid is placed at 101.
+# ask_spread: 0.5
+ask_spread: 0.2
+
+# Minimum Spread
+# How far away from the mid price to cancel active orders
+minimum_spread: -100.0
+
+# Size of your bid and ask order.
+# dydx min order 0.01eth ~ 30usd (i.e. eth price / 100)
+# with 10 increments of 1000usd @ $2500 eth, amt ~ 0.04 ~ $100
+order_amount: 0.01
+
+# Number of levels of orders to place on each side of the order book.
+# order_levels: 5
+order_levels: 3
+# api seems to limit small orders to 10 per 10 seconds
+# but bot tries to place order_levels * 2 at the start of each tick
+# could run 2 separate bots to increase total levels above 10, or just limit to 10
+# we adjust order sizes accordingly
+
+# Order price space between orders (if order_levels > 1).
+# order_level_spread: 0.25
+order_level_spread: 0.1
+# this might need tweaking
+
+# Increase or decrease size of consecutive orders after the first order (if order_levels > 1).
+# this is a martingale technique
+order_level_amount: 0
+
+# Time in seconds before cancelling and placing new orders.
+# I.e. the main clock cycle
+# If the value is 60, the bot cancels active orders and places new ones after a minute
+# unless the existing orders are within order_refresh_tolerance_pct of what the new ones would be, then they are just left open
+# order_refresh_time: 300
+order_refresh_time: 60
+# this might need tweaking
+# 30 minutes, i.e. for rapid trade bot expect price to fluctuate +/- 15 usd within 30 minutes X times a day
+
+# The spread (from mid price) to defer order refresh process to the next cycle.
+# (Enter 1 to indicate 1%), value below 0, e.g. -1, is to disable this feature - not recommended.
+# order_refresh_tolerance_pct: 0.5
+order_refresh_tolerance_pct: 0.25
+# the percent change in price needed to refresh orders at each cycle
+# to reset the orders, the actual difference from the market price needs to be
+# order_refresh_tolerance_pct + ask_spread
+# this might need tweaking
+# a larger value for this will prevent the bot following the market too closely
+# if there is an undesirable reversal
+
+# How long to wait before placing the next order in case your order gets filled.
+# if at least 1 level is complete (opened and then exited)
+# then wait this long before restarting the order process
+# advantage is if market reverses rapidly then the exit can be more favourable
+# filled_order_delay: 600
+filled_order_delay: 60
+# I: 10 minutes
+# this might need tweaking
+# explanation is misleading
+
+# long position take profit spread
+# long_profit_taking_spread: 0.5
+long_profit_taking_spread: 0.2
+# requires eth price change of 15 usd
+# sell at 0.5% gain, i.e. 0.5 usd or 50c
+# minus fee of 2 * 0.02 usd or 4c
+# this might need tweaking
+
+# short position take profit spread
+# short_profit_taking_spread: 0.5
+short_profit_taking_spread: 0.2
+
+# Spread from position entry price to place a stop-loss order to close position
+stop_loss_spread: 25
+# 100 seems equivalent to no stop loss on a long order, as price would be 0
+# but would that be 2x on a short order, i.e. buy at 100, stop loss at 200
+# this might need tweaking
+
+# Time to wait before refreshing a stop loss order that has not been executed
+time_between_stop_loss_orders: 300
+
+# Spread to include in stop loss orders covering possible price slippages in the market
+stop_loss_slippage_buffer: 0.5
+
+# expecting bear market with floor 1200
+
+# support / resistance lines based on 1d candle as at 2022-03-07, current price 2580
+# 4787
+# 4079
+# 2925 * upper
+# 2308 * lower
+# 1879
+# 1457
+# expect lower support(s) to break
+# readjust bands as they do
+
+# Price band ceiling.
+price_ceiling: 2308
+# the price point above which only sell orders will be placed
+# buy orders can be placed but only to complement a successfully placed sell order
+
+# Price band floor.
+price_floor: 1879
+# the price below which only buy orders will be placed
+# sell orders can be placed but only to complement a successfully placed buy order
+
+# Whether to enable order optimization mode (true/false).
+order_optimization_enabled: false
+
+# The depth in base asset amount to be used for finding top ask (for order optimization mode).
+ask_order_optimization_depth: 0
+
+# The depth in base asset amount to be used for finding top bid (for order optimization mode).
+bid_order_optimization_depth: 0
+
+# The price source (current_market/external_market/custom_api).
+price_source: current_market
+
+# The price type (mid_price/last_price/last_own_trade_price/best_bid/best_ask).
+price_type: mid_price
+
+# An external exchange name (for external exchange pricing source).
+price_source_derivative:
+
+# A trading pair for the external exchange, e.g. BTC-USDT (for external exchange pricing source).
+price_source_market:
+
+# An external api that returns price (for custom_api pricing source).
+price_source_custom_api:
+
+# An interval time in second to update the price from custom api (for custom_api pricing source).
+custom_api_update_interval: 5.0
+# ignore this
+
+# Use user provided orders to directly override the orders placed by order_amount and order_level_parameter
+# This is an advanced feature and user is expected to directly edit this field in config file
+# Below is an sample input, the format is a dictionary, the key is user-defined order name, the value is a list which includes buy/sell, order spread, and order amount
+# order_override:
+#   order_1: [buy, 0.5, 100]
+#   order_2: [buy, 0.75, 200]
+#   order_3: [sell, 0.1, 500]
+# Please make sure there is a space between : and [
+order_override:
+
+# For more detailed information, see:
+# https://docs.hummingbot.io/strategies/pure-market-making/#configuration-parameters
