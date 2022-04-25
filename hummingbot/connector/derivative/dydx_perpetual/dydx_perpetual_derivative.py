@@ -371,7 +371,7 @@ class DydxPerpetualDerivative(ExchangeBase, PerpetualTrading):
             # this shouldn't be hardcoded but it is
             expiration = created_at + 60 * 1440 * 1000
             # limit_fee = 0.015
-            limit_fee = 0.0005  # this shouldn't be hardcoded, but current fee cap is 0.05%
+            limit_fee = 0.001  # this shouldn't be hardcoded, but current fee cap is 0.1%
             try:
                 creation_response = await self.place_order(
                     client_order_id,
