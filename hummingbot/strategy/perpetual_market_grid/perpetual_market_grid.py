@@ -637,139 +637,6 @@ class PerpetualMarketGridStrategy(StrategyPyBase):
                         buys.append(PriceSize(price, size))
         return Proposal(buys, sells)
 
-    def get_grid_interval(self):
-        market: ExchangeBase = self._market_info.market
-        price_grid = {}
-        market_grid = {}
-        # oo = {
-        #   'grid_direction': 'hedge',
-        #   'grid_ceiling': 8.64,
-        #   'grid_floor': 4.89,
-        #   'grid_invest_amount_base': 500,
-        #   'grid_interval_pct': 0.005
-        # }
-        # market_price = 7.7
-        market_price = self.get_price()
-        # last_order_price = 0
-        last_order_price = self._last_own_trade_price
-        if last_order_price.is_nan():
-            last_order_price = 0
-        last_order_price = Decimal(last_order_price)
-        # to do: check last_order returns correct result on bot restart
-        oo = self._order_override
-        grid_floor = Decimal(oo["grid_floor"])
-        grid_ceiling = Decimal(oo["grid_ceiling"])
-        interval = Decimal(1 + oo["grid_interval_pct"])
-        amount_base = Decimal(oo["grid_invest_amount_base"])
-        direction = oo["grid_direction"]
-        # calculate grid steps (same every time)
-        # and flag the current position in the grid relative to market price (step_current)
-        # and capture the step of the last order
-        last_step_order = -1
-        step = 1
-        step_price = market.quantize_order_price(self.trading_pair, grid_floor)
-        grid_ceiling = market.quantize_order_price(self.trading_pair, grid_ceiling)
-        while step_price <= grid_ceiling:
-            price_grid[step] = step_price
-            # check if the last order price was on (or very close to) the current step
-            # to do: check this calc is as expected
-            if abs(step_price - last_order_price) / step_price < (interval - 1) / Decimal(3):
-                last_step_order = step
-            step_price *= interval
-            step_price = market.quantize_order_price(self.trading_pair, step_price)
-            if price_grid[step] <= market_price and market_price < step_price:
-                step_current = step
-            step += 1
-        # set correct value for total number of steps
-        steps = step - 1
-        # flag current position if outside of grid
-        if market_price < price_grid[1]:
-            step_current = 0
-        if market_price > price_grid[steps]:
-            step_current = steps + 1
-        # calculate average amount to trade per step
-        # this won't add profits to the step trade amount
-        # possible small error in amount_step
-        amount_step = amount_base / (steps * ((price_grid[steps] + price_grid[1]) / 2))
-        amount_step = market.quantize_order_amount(self.trading_pair, amount_step)
-        # select up to 5 long and 5 short orders either side of current step
-        for step, step_price in price_grid.items():
-            # ignore grid step orders that are more than 4 steps from the current one (dydx can handle up to 10 orders at once)
-            if step < step_current - 4 or step > step_current + 4:
-                continue
-            # do not place a grid step order if it was the last order placed
-            if step == last_step_order:
-                continue
-            # long logic
-            if direction == 'long':
-                # if no order has been placed yet
-                if last_order_price == 0:
-                    # if market price is below the bottom step price
-                    if step_current == 0:
-                        if step == 1:
-                            side = 'buy'
-                        else:
-                            break
-                    # if market price is above the top step price
-                    elif step_current > steps:
-                        # and we're on a step below the top one
-                        if step < steps:
-                            side = 'buy'
-                        else:
-                            continue
-                    # if market price is within the grid
-                    else:
-                        # and step price is below market price
-                        if step_price < market_price:
-                            side = 'buy'
-                        else:
-                            continue
-                # if an order has been placed
-                # to do:
-                else:
-                    break
-            # to do: short logic
-            elif direction == 'short':
-                break
-            # hedge logic
-            elif direction == 'hedge':
-                # if market price is below the bottom step price
-                if step_current == 0:
-                    if step == 1:
-                        side = 'buy'
-                    else:
-                        side = 'sell'
-                # if market price is above the top step price
-                elif step_current > steps:
-                    # and we're on the top step
-                    if step == steps:
-                        side = 'sell'
-                    else:
-                        side = 'buy'
-                # if market price is within the grid
-                else:
-                    # and step price is below market price
-                    if step_price < market_price:
-                        side = 'buy'
-                    else:
-                        side = 'sell'
-            market_grid[step] = [side, step_price, amount_step]
-        self._cancel_timestamp = self.current_timestamp
-        # logger
-        # self.logger().info(
-        #     f"\n price_grid: {price_grid}"
-        #     f"\n steps: {steps}"
-        #     f"\n amount_step: {amount_step}"
-        #     f"\n last_step_order: {last_step_order}"
-        #     f"\n last_order_price: {last_order_price}"
-        #     f"\n market_price: {market_price}"
-        #     f"\n step_current: {step_current}"
-        #     f"\n market_grid: {market_grid}"
-        # )
-        # stop()
-        # end logger
-        return market_grid
-
     def create_base_proposal(self):
         market: ExchangeBase = self._market_info.market
         buys = []
@@ -777,23 +644,19 @@ class PerpetualMarketGridStrategy(StrategyPyBase):
 
         # First to check if a customized order override is configured, otherwise the proposal will be created according
         # to order spread, amount, and levels setting.
-        # order_override = self._order_override
-        order_override = self.get_grid_interval()
-        print(order_override)
+        order_override = self._order_override
         if order_override is not None and len(order_override) > 0:
             for key, value in order_override.items():
                 if str(value[0]) in ["buy", "sell"]:
                     if str(value[0]) == "buy":
-                        # price = self.get_price() * (Decimal("1") - Decimal(str(value[1])) / Decimal("100"))
-                        price = Decimal(str(value[1]))
+                        price = self.get_price() * (Decimal("1") - Decimal(str(value[1])) / Decimal("100"))
                         price = market.quantize_order_price(self.trading_pair, price)
                         size = Decimal(str(value[2]))
                         size = market.quantize_order_amount(self.trading_pair, size)
                         if size > 0 and price > 0:
                             buys.append(PriceSize(price, size))
                     elif str(value[0]) == "sell":
-                        # price = self.get_price() * (Decimal("1") + Decimal(str(value[1])) / Decimal("100"))
-                        price = Decimal(str(value[1]))
+                        price = self.get_price() * (Decimal("1") + Decimal(str(value[1])) / Decimal("100"))
                         price = market.quantize_order_price(self.trading_pair, price)
                         size = Decimal(str(value[2]))
                         size = market.quantize_order_amount(self.trading_pair, size)
