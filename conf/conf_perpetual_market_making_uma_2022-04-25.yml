@@ -29,7 +29,7 @@ market: UMA-USD
 leverage: 1
 
 # Position mode to use, hedge mode or one-way position mode.
-position_mode: One-way
+position_mode: Hedge
 # one-way prevents simultaneous long and short positions, hedge allows
 # one-way still allows two-directional grid orders (i.e. open long and close sell, or open short and close buy)
 #   but whichever position opens first, the other position will be prevented from opening until the first position is closed
