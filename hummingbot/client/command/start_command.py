@@ -118,7 +118,7 @@ class StartCommand:
 
         try:
             config_path: str = self.strategy_file_name
-            self.start_time = time.time() * 1e3  # Time in milliseconds
+            self.start_time = time.time() * 5e3  # Time in milliseconds
             self.clock = Clock(ClockMode.REALTIME)
             for market in self.markets.values():
                 if market is not None:
