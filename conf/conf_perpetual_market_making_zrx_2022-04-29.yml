@@ -75,7 +75,7 @@ order_refresh_time: 2419200
 order_refresh_tolerance_pct: 0.5
 
 # Size of your bid and ask order.
-order_amount: 4.0
+order_amount: 40.0
 
 # long position take profit spread
 long_profit_taking_spread: 0.5
