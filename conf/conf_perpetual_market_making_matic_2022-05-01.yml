@@ -23,7 +23,7 @@ strategy: perpetual_market_making
 derivative: dydx_perpetual
 
 # Token trading pair for the exchange, e.g. BTC-USDT
-market: AVAX-USD
+market: MATIC-USD
 
 # What leverage to used
 leverage: 1
