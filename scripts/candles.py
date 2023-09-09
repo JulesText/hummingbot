@@ -24,8 +24,8 @@ class CandlesExample(ScriptStrategyBase):
     # Is possible to use the Candles Factory to create the candlestick that you want, and then you have to start it.
     # Also, you can use the class directly like BinancePerpetualsCandles(trading_pair, interval, max_records), but
     # this approach is better if you want to initialize multiple candles with a list or dict of configurations.
-    eth_1m_candles = CandlesFactory.get_candle(connector="dydx_perpetual",
-                                               trading_pair="ETH-USD",
+    eth_1m_candles = CandlesFactory.get_candle(connector="binance_perpetual",
+                                               trading_pair="ETH-USDT",
                                                interval="1m", max_records=10)
 
     # The markets are the connectors that you can use to execute all the methods of the scripts strategy base
